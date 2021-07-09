@@ -1,0 +1,226 @@
+substitutions:
+  devicename: esp_rf_bridge
+  display_devicename: ESP RF Bridge
+
+esphome:
+  name: ${devicename}
+  platform: ESP8266
+  board: esp8285
+
+logger:
+  baud_rate: 0
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: none
+
+ota:
+  password: !secret ota_password
+
+web_server:
+  port: 80
+
+uart:
+  tx_pin: GPIO01
+  rx_pin: GPIO03
+  baud_rate: 19200
+
+api:
+  # password: 't2cih2Esp!'
+  services:
+    - service: send_code
+      variables:
+        sync: int
+        low: int
+        high: int
+        code: int
+      then:
+        - rf_bridge.send_code:
+            sync: !lambda 'return sync;'
+            low: !lambda 'return low;'
+            high: !lambda 'return high;'
+            code: !lambda 'return code;'
+    - service: learn
+      then:
+        - rf_bridge.learn
+    - service: start_advanced_sniff
+      then:
+        - rf_bridge.start_advanced_sniffing
+    - service: stop_advanced_sniff
+      then:
+        - rf_bridge.stop_advanced_sniffing
+
+light:
+  - platform: binary
+    name: "${display_devicename} WiFi LED"
+    id: wifi_led
+    output: output_wifi_led
+    internal: True
+
+output:
+  - platform: gpio
+    pin:
+      number: GPIO13
+      inverted: True
+    id: output_wifi_led
+
+sensor:
+  - platform: uptime
+    name: "${display_devicename} Uptime"
+    id: uptime_seconds
+  - platform: wifi_signal
+    name: "${display_devicename} WiFi Signal"
+
+switch:
+  - platform: restart
+    name: "${display_devicename} Restart"
+
+remote_receiver:
+  pin: 4
+  dump:
+    - rc_switch
+  filter: 5us
+  tolerance: 50
+  idle: 5ms
+
+  on_rc_switch:
+    then: 
+        text_sensor.template.publish:
+          id: rf_code
+          state: !lambda |- 
+            char bin_buffer[33];
+            itoa(x.code,bin_buffer,2);
+            return bin_buffer;
+
+remote_transmitter:
+  pin: 5
+  carrier_duty_percent: 100%
+
+status_led:
+  pin:
+    number: GPIO13
+    inverted: True
+
+rf_bridge:
+  on_code_received:
+    then:
+      - homeassistant.event:
+          event: esphome.rf_code_received
+          data:
+            sync: !lambda 'char buffer [10];return itoa(data.sync,buffer,16);'
+            low: !lambda 'char buffer [10];return itoa(data.low,buffer,16);'
+            high: !lambda 'char buffer [10];return itoa(data.high,buffer,16);'
+            code: !lambda 'char buffer [10];return itoa(data.code,buffer,16);'
+      - if: # front door closed
+          condition:
+            lambda: |-
+              return data.code == 0x94C00A;
+          then:
+            - binary_sensor.template.publish:
+                id: front_safety_door
+                state: ON
+      - if: # front door open
+          condition:
+            lambda: |-
+              return data.code == 0x94C00E;
+          then:
+            - binary_sensor.template.publish:
+                id: front_safety_door
+                state: OFF
+      - if: # garage closed
+          condition:
+            lambda: |-
+              return data.code == 0x92440A;
+          then:
+            - binary_sensor.template.publish:
+                id: garage_door
+                state: ON
+      - if: # garage open
+          condition:
+            lambda: |-
+              return data.code == 0x92440E;
+          then:
+            - binary_sensor.template.publish:
+                id: garage_door
+                state: OFF
+      - if: # back door closed
+          condition:
+            lambda: |-
+              return data.code == 0x92E60A;
+          then:
+            - binary_sensor.template.publish:
+                id: back_safety_door
+                state: ON
+      - if: # back door open
+          condition:
+            lambda: |-
+              return data.code == 0x92E60E;
+          then:
+            - binary_sensor.template.publish:
+                id: back_safety_door
+                state: OFF
+  on_advanced_code_received:
+    - homeassistant.event:
+        event: esphome.rf_advanced_code_received
+        data:
+          length: !lambda 'char buffer [10];return itoa(data.length,buffer,16);'
+          protocol: !lambda 'char buffer [10];return itoa(data.protocol,buffer,16);'
+          code: !lambda 'return data.code;'
+        
+binary_sensor:
+  - platform: status
+    name: "${display_devicename} Status"
+    on_state:
+      then:
+        - light.toggle: wifi_led
+  - platform: gpio
+    pin: GPIO00
+    name: "${display_devicename} Pairing Button"
+  - platform: template
+    name: 'Front Safety Door State'
+    device_class: door
+    id: front_safety_door
+  - platform: template
+    name: 'Garage Door State'
+    device_class: garage_door
+    id: garage_door
+  - platform: template
+    name: 'Back Safety Door State'
+    device_class: door
+    id: back_safety_door
+
+text_sensor:
+  - platform: version
+    name: "${display_devicename} Version"
+  - platform: wifi_info
+    ip_address:
+      name: "${display_devicename} IP Address"
+  - platform: template
+    name: "${display_devicename} Uptime"
+    lambda: |-
+      uint32_t dur = id(uptime_seconds).state;
+      int dys = 0;
+      int hrs = 0;
+      int mnts = 0;
+      if (dur > 86399) {
+        dys = trunc(dur / 86400);
+        dur = dur - (dys * 86400);
+      }
+      if (dur > 3599) {
+        hrs = trunc(dur / 3600);
+        dur = dur - (hrs * 3600);
+      } 
+      if (dur > 59) {
+        mnts = trunc(dur / 60);
+        dur = dur - (mnts * 60);
+      }
+      char buffer[17];
+      sprintf(buffer, "%ud, %02u:%02u:%02u", dys, hrs, mnts, dur);
+      return {buffer};
+    icon: mdi:clock-start
+    update_interval: 60s
+  - platform: template
+    name: "Latest Code"
+    id: rf_code
+

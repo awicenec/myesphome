@@ -1,0 +1,47 @@
+esphome:
+  name: nodemcu2
+  platform: ESP8266
+  board: nodemcu
+
+i2c:
+  scan: True
+  id: bus_a
+
+wifi:
+  ssid: "wicinetIoT"
+  password: "32155595"
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Espiggy Fallback Hotspot"
+    password: "3c7Xgo6H77Fq"
+
+captive_portal:
+
+# Enable web server
+web_server:
+  port: 80
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: "t2cih2Esp!"
+
+ota:
+  password: "t2cih2Esp!"
+
+sensor:
+  - platform: adc
+    pin: A0
+    name: "TV Brightness"
+    unit_of_measurement: "%"
+    accuracy_decimals: 0
+    icon: "mdi:brightness-percent"
+    update_interval: 1s
+    filters:
+      - calibrate_linear:
+        - 0.0 -> 0.0
+        - 1.0 -> 100.0
+
