@@ -50,6 +50,9 @@ api:
     - service: stop_advanced_sniff
       then:
         - rf_bridge.stop_advanced_sniffing
+    - service: bucket_learn_on
+      then:
+        - rf_bridge.start_bucket_sniffing
 
 light:
   - platform: binary

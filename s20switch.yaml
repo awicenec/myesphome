@@ -15,7 +15,7 @@ wifi:
   power_save_mode: high
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    ssid: "${name} Fallback Hotspot"
+    ssid: "S20 Fallback Hotspot"
     password: !secret fallback_password
 
 captive_portal:
@@ -36,3 +36,36 @@ api:
 
 ota:
   password: !secret hass_password
+
+binary_sensor:
+  - platform: gpio
+    pin:
+      number: GPIO0
+      mode: INPUT_PULLUP
+      inverted: true
+    name: "Sonoff S20 Button"
+  - platform: status
+    name: "Sonoff S20 Status"
+  - platform: gpio
+    pin: GPIO2
+    name: "Sonoff S20 Sensor"
+
+
+switch:
+  - platform: gpio
+    name: "Sonoff S20 Relay"
+    pin: GPIO12
+
+output:
+  # Register the green LED as a dimmable output ....
+  - platform: esp8266_pwm
+    id: s20_green_led
+    pin:
+      number: GPIO13
+      inverted: true
+
+light:
+  # ... and then make a light out of it.
+  - platform: monochromatic
+    name: "Sonoff S20 Green LED"
+    output: s20_green_led
