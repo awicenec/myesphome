@@ -1,0 +1,99 @@
+substitutions:
+  xscrollpadding: "4" # in pix
+
+esphome:
+  name: matrix
+  platform: esp8266
+  board: nodemcu
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "esp12-rgb Fallback Hotspot"
+    password: !secret fallback_password
+
+captive_portal:
+
+# Enable web server
+web_server:
+  port: 80
+  auth:
+    username: !secret web_server_user
+    password: !secret web_server_password
+      
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  password: !secret hass_password
+
+ota:
+  password: !secret hass_password
+
+mqtt:
+  id: mqtt_client
+  broker: !secret mqtt_broker
+  username: !secret mqtt_user 
+  password: !secret mqtt_password
+
+
+text_sensor:
+  - platform: mqtt_subscribe
+    name: "Text"
+    id: matrixtext
+    topic: matrix/text
+  - platform: mqtt_subscribe
+    name: "Colour"
+    id: mcolour
+    topic: matrix/colour
+
+font:
+  - id: tinyfont
+    file: "DejaVuSans-Bold.ttf"
+    size: 9
+    glyphs: '♡Ωäöüß!"%()+,-_.:*=°?~#0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ abcdefghijklmnopqrstuvwxyz'
+
+# GPIO4 (D02)
+light:
+  - platform: fastled_clockless
+    chipset: WS2812B
+    pin: GPIO4
+    num_leds: 64
+    rgb_order: GRB
+    name: "led_matrix"
+    id: led_matrix
+    default_transition_length: 0s
+    color_correct: [50%, 50%, 50%]
+    restore_mode: ALWAYS_ON
+    effects:
+      - addressable_random_twinkle:
+      - addressable_random_twinkle:
+          name: Random Twinkle Effect With Custom Values
+          twinkle_probability: 5%
+          progress_interval: 32ms  
+display:
+  - platform: addressable_light
+    id: led_matrix_display
+    addressable_light_id: led_matrix
+    width: 8
+    height: 8
+    rotation: 270°
+    update_interval: 200ms
+    lambda: |-
+          static uint16_t xpos = 0;
+          const char * text = id(matrixtext).state.c_str();
+     
+          int x_start, y_start;
+          int width, height;
+              
+          it.get_text_bounds(0, 0, text, id(tinyfont), 
+              TextAlign::TOP_LEFT, &x_start, &y_start, &width, &height); 
+          
+          it.print(-(xpos % (width + $xscrollpadding)), -2, 
+            id(tinyfont), Color(0x0000FF), 
+            TextAlign::TOP_LEFT, text); 
+          xpos++;
