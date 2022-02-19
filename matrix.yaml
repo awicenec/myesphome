@@ -47,9 +47,9 @@ text_sensor:
     id: matrixtext
     topic: matrix/text
   - platform: mqtt_subscribe
-    name: "Colour"
-    id: mcolour
-    topic: matrix/colour
+    name: "Color"
+    id: matrixcolor
+    topic: matrix/color
 
 font:
   - id: tinyfont
@@ -75,6 +75,20 @@ light:
           name: Random Twinkle Effect With Custom Values
           twinkle_probability: 5%
           progress_interval: 32ms  
+sensor:
+  - platform: homeassistant
+    id: hred
+    entity_id: light.led_matrix
+    attribute: red
+  - platform: homeassistant
+    id: hgreen
+    entity_id: light.led_matrix
+    attribute: green
+  - platform: homeassistant
+    id: hblue
+    entity_id: light.led_matrix
+    attribute: blue
+
 display:
   - platform: addressable_light
     id: led_matrix_display
@@ -86,6 +100,7 @@ display:
     lambda: |-
           static uint16_t xpos = 0;
           const char * text = id(matrixtext).state.c_str();
+          const char * color = id(matrixcolor).state.c_str();
      
           int x_start, y_start;
           int width, height;
@@ -94,6 +109,6 @@ display:
               TextAlign::TOP_LEFT, &x_start, &y_start, &width, &height); 
           
           it.print(-(xpos % (width + $xscrollpadding)), -2, 
-            id(tinyfont), Color(0x0000FF), 
+            id(tinyfont), Color(uint32_t(color)), 
             TextAlign::TOP_LEFT, text); 
           xpos++;
