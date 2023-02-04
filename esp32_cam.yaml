@@ -32,7 +32,8 @@ logger:
 
 # Enable Home Assistant API
 api:
-  password: !secret hass_password
+  encryption:
+    key: !secret hass_key
 
 ota:
   password: !secret hass_password
@@ -51,10 +52,26 @@ esp32_camera:
   pixel_clock_pin: GPIO22
   power_down_pin: GPIO32
   resolution: 800x600
-  jpeg_quality: 10  
+  jpeg_quality: 20
   max_framerate: 15fps
+
+esp32_camera_web_server:
+  - port: 8080
+    mode: stream
+  - port: 8081
+    mode: snapshot
+
+output:
+  - platform: gpio
+    pin: GPIO4
+    id: gpio_4
+light:
+  - platform: binary
+    output: gpio_4
+    name: entreance light
+    id: camera_flash
 
 sensor:
   - platform: wifi_signal
     name: "WiFi Signal Sensor"
-    update_interval: 5s
+    update_interval: 60s

@@ -36,7 +36,8 @@ logger:
 
 # Enable Home Assistant API
 api:
-  password: !secret hass_password
+  encryption:
+    key: !secret hass_key
 
 ota:
   password: !secret ota_password
@@ -58,7 +59,8 @@ sensor:
     icon: "mdi:brightness-percent"
     update_interval: 60s
     filters:
-      multiply: 100
+      multiply:
+        100
 
         #light:
         #  - platform: rgb
@@ -80,4 +82,3 @@ sensor:
         #    id: output_component3
         #    pin: GPIO13
         #
-

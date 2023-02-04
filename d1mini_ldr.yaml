@@ -32,7 +32,8 @@ logger:
 
 # Enable Home Assistant API
 api:
-  password: !secret hass_password
+  encryption:
+    key: !secret hass_key
 
 ota:
   password: !secret ota_password
@@ -40,8 +41,8 @@ ota:
 sensor:
   - platform: pulse_meter
     pin: D5
-    unit_of_measurement: 'kW'
-    name: 'Power Meter'
+    unit_of_measurement: "kW"
+    name: "Power Meter"
     filters:
       - multiply: 0.06
     internal_filter: 5ms

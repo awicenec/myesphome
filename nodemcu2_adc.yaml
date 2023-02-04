@@ -8,13 +8,13 @@ i2c:
   id: bus_a
 
 wifi:
-  ssid: "wicinetIoT"
-  password: "32155595"
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
     ssid: "Espiggy Fallback Hotspot"
-    password: "3c7Xgo6H77Fq"
+    password: !secret fallback_password
 
 captive_portal:
 
@@ -27,10 +27,10 @@ logger:
 
 # Enable Home Assistant API
 api:
-  password: "t2cih2Esp!"
-
+  encryption:
+    key: !secret hass_key
 ota:
-  password: "t2cih2Esp!"
+  password: !secret ota_password
 
 sensor:
   - platform: adc
@@ -42,6 +42,5 @@ sensor:
     update_interval: 1s
     filters:
       - calibrate_linear:
-        - 0.0 -> 0.0
-        - 1.0 -> 100.0
-
+          - 0.0 -> 0.0
+          - 1.0 -> 100.0

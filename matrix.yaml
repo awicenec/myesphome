@@ -23,13 +23,14 @@ web_server:
   auth:
     username: !secret web_server_user
     password: !secret web_server_password
-      
+
 # Enable logging
 logger:
 
 # Enable Home Assistant API
 api:
-  password: !secret hass_password
+  encryption:
+    key: !secret hass_key
 
 ota:
   password: !secret hass_password
@@ -37,9 +38,8 @@ ota:
 mqtt:
   id: mqtt_client
   broker: !secret mqtt_broker
-  username: !secret mqtt_user 
+  username: !secret mqtt_user
   password: !secret mqtt_password
-
 
 text_sensor:
   - platform: mqtt_subscribe
@@ -74,7 +74,7 @@ light:
       - addressable_random_twinkle:
           name: Random Twinkle Effect With Custom Values
           twinkle_probability: 5%
-          progress_interval: 32ms  
+          progress_interval: 32ms
 sensor:
   - platform: homeassistant
     id: hred
@@ -98,17 +98,17 @@ display:
     rotation: 270°
     update_interval: 200ms
     lambda: |-
-          static uint16_t xpos = 0;
-          const char * text = id(matrixtext).state.c_str();
-          const char * color = id(matrixcolor).state.c_str();
-     
-          int x_start, y_start;
-          int width, height;
-              
-          it.get_text_bounds(0, 0, text, id(tinyfont), 
-              TextAlign::TOP_LEFT, &x_start, &y_start, &width, &height); 
+      static uint16_t xpos = 0;
+      const char * text = id(matrixtext).state.c_str();
+      const char * color = id(matrixcolor).state.c_str();
+
+      int x_start, y_start;
+      int width, height;
           
-          it.print(-(xpos % (width + $xscrollpadding)), -2, 
-            id(tinyfont), Color(uint32_t(color)), 
-            TextAlign::TOP_LEFT, text); 
-          xpos++;
+      it.get_text_bounds(0, 0, text, id(tinyfont), 
+          TextAlign::TOP_LEFT, &x_start, &y_start, &width, &height); 
+
+      it.print(-(xpos % (width + $xscrollpadding)), -2, 
+        id(tinyfont), Color(uint32_t(color)), 
+        TextAlign::TOP_LEFT, text); 
+      xpos++;

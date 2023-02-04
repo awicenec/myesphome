@@ -17,7 +17,7 @@ wifi:
   ap:
     ssid: "Espiggy Fallback Hotspot"
     password: !secret fallback_password
-  
+
 captive_portal:
 
 # Enable web server
@@ -32,7 +32,8 @@ logger:
 
 # Enable Home Assistant API
 api:
-  password: !secret hass_password
+  encryption:
+    key: !secret hass_key
 
 ota:
   password: !secret ota_password

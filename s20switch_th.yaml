@@ -3,7 +3,6 @@ substitutions:
   friendly_name: "Garage"
   sonoff_type: "TH10"
 
-
 time:
   - platform: sntp
     id: sntp_time
@@ -33,7 +32,8 @@ logger:
 
 # Enable Home Assistant API
 api:
-  password: !secret hass_password
+  encryption:
+    key: !secret hass_key
 
 esphome:
   name: ${device_name}
@@ -67,7 +67,6 @@ text_sensor:
     ip_address:
       name: ${friendly_name} ${sonoff_type} IP
     ssid:
-       name: ${friendly_name} ${sonoff_type} SSID
+      name: ${friendly_name} ${sonoff_type} SSID
     bssid:
       name: ${friendly_name} ${sonoff_type} BSSID
-

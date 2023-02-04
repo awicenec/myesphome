@@ -26,13 +26,14 @@ web_server:
   auth:
     username: !secret web_server_user
     password: !secret web_server_password
-
+1
 # Enable logging
 logger:
 
 # Enable Home Assistant API
 api:
-  password: !secret hass_password
+  encryption:
+    key: !secret hass_key
 
 ota:
   password: !secret hass_password

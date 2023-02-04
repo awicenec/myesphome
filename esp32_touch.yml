@@ -20,7 +20,8 @@ wifi:
 
 # Enable Home Assistant API
 api:
-  password: !secret hass_password
+  encryption:
+    key: !secret hass_key
 
 ota:
   password: !secret hass_password
@@ -34,10 +35,10 @@ binary_sensor:
     pin: GPIO27
     threshold: 50
     on_press:
-    - homeassistant.service:
-        service: esphome.esp12_player_dfplayer_play
-        data:
-          file: "12"
+      - homeassistant.service:
+          service: esphome.esp12_player_dfplayer_play
+          data:
+            file: "12"
 # # Example configuration entry
 # deep_sleep:
 #   run_duration: 10s

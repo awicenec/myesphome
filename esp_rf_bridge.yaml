@@ -40,7 +40,9 @@ ota:
   password: !secret ota_password
 
 api:
-  password: !secret hass_password
+  encryption:
+    key: !secret hass_key
+
   services:
     - service: send_code
       variables:
@@ -50,10 +52,10 @@ api:
         code: int
       then:
         - rf_bridge.send_code:
-            sync: !lambda 'return sync;'
-            low: !lambda 'return low;'
-            high: !lambda 'return high;'
-            code: !lambda 'return code;'
+            sync: !lambda "return sync;"
+            low: !lambda "return low;"
+            high: !lambda "return high;"
+            code: !lambda "return code;"
     - service: learn
       then:
         - rf_bridge.learn
@@ -87,6 +89,7 @@ sensor:
     id: uptime_seconds
   - platform: wifi_signal
     name: "${display_devicename} WiFi Signal"
+    update_interval: 300s
 
 switch:
   - platform: restart
@@ -94,20 +97,10 @@ switch:
 
 remote_receiver:
   pin: 4
-  dump:
-    - rc_switch
+  dump: raw
   filter: 5us
   tolerance: 50
-  idle: 5ms
-
-  on_rc_switch:
-    then: 
-        text_sensor.template.publish:
-          id: rf_code
-          state: !lambda |- 
-            char bin_buffer[33];
-            itoa(x.code,bin_buffer,2);
-            return bin_buffer;
+  idle: 3ms
 
 remote_transmitter:
   pin: 5
@@ -124,10 +117,14 @@ rf_bridge:
       - homeassistant.event:
           event: esphome.rf_code_received
           data:
-            sync: !lambda 'char buffer [10];return itoa(data.sync,buffer,16);'
-            low: !lambda 'char buffer [10];return itoa(data.low,buffer,16);'
-            high: !lambda 'char buffer [10];return itoa(data.high,buffer,16);'
-            code: !lambda 'char buffer [10];return itoa(data.code,buffer,16);'
+            sync: !lambda char buffer [10];return itoa(data.sync,buffer,16);
+            low: !lambda char buffer [10];return itoa(data.low,buffer,16);
+            high: !lambda char buffer [10];return itoa(data.high,buffer,16);
+            code: !lambda char buffer [10];return itoa(data.code,buffer,16);
+      - text_sensor.template.publish:
+          id: rf_code
+          state: !lambda |-
+            char buffer [10];return itoa(data.code,buffer,16);
       - if: # front door closed
           condition:
             lambda: |-
@@ -180,10 +177,10 @@ rf_bridge:
     - homeassistant.event:
         event: esphome.rf_advanced_code_received
         data:
-          length: !lambda 'char buffer [10];return itoa(data.length,buffer,16);'
-          protocol: !lambda 'char buffer [10];return itoa(data.protocol,buffer,16);'
-          code: !lambda 'return data.code;'
-        
+          length: !lambda "char buffer [10];return itoa(data.length,buffer,16);"
+          protocol: !lambda "char buffer [10];return itoa(data.protocol,buffer,16);"
+          code: !lambda "return data.code;"
+
 binary_sensor:
   - platform: status
     name: "${display_devicename} Status"
@@ -194,15 +191,15 @@ binary_sensor:
     pin: GPIO00
     name: "${display_devicename} Pairing Button"
   - platform: template
-    name: 'Front Safety Door State'
+    name: "Front Safety Door State"
     device_class: door
     id: front_safety_door
   - platform: template
-    name: 'Garage Door State'
+    name: "Garage Door State"
     device_class: garage_door
     id: garage_door
   - platform: template
-    name: 'Back Safety Door State'
+    name: "Back Safety Door State"
     device_class: door
     id: back_safety_door
 
@@ -235,8 +232,6 @@ text_sensor:
       sprintf(buffer, "%ud, %02u:%02u:%02u", dys, hrs, mnts, dur);
       return {buffer};
     icon: mdi:clock-start
-    update_interval: 60s
   - platform: template
-    name: "Latest Code"
+    name: "${display_devicename} Latest Code"
     id: rf_code
-

@@ -37,117 +37,118 @@ logger:
 
 # Enable Home Assistant API
 api:
-  password: !secret hass_password
+  encryption:
+    key: !secret hass_key
 
 ota:
   password: !secret ota_password
 
 switch:
-- platform: gpio
-  name: "PS1"
-  icon: mdi:power-socket-au
-  id: relay1
-  pin:
-    number: GPIO4
-    inverted: True
-  restore_mode: RESTORE_DEFAULT_OFF
-  on_turn_on:
-  - switch.turn_on: red_led
-  on_turn_off:
-    - if:
-        condition:
-          and:
-            - switch.is_off: relay2
-            - switch.is_off: relay3
-            - switch.is_off: relay4
-        then:
-          - switch.turn_off: red_led
-- platform: gpio
-  name: "PS2"
-  icon: mdi:power-socket-au
-  id: relay2
-  pin:
-    number: GPIO13
-    inverted: True
-  restore_mode: RESTORE_DEFAULT_OFF
-  on_turn_on:
-  - switch.turn_on: red_led
-  on_turn_off:
-    - if:
-        condition:
-          and:
-            - switch.is_off: relay1
-            - switch.is_off: relay3
-            - switch.is_off: relay4
-        then:
-          - switch.turn_off: red_led
-- platform: gpio
-  name: "PS3"
-  icon: mdi:power-socket-au
-  id: relay3
-  pin:
-    number: GPIO12
-    inverted: True
-  restore_mode: RESTORE_DEFAULT_OFF
-  on_turn_on:
-  - switch.turn_on: red_led
-  on_turn_off:
-    - if:
-        condition:
-          and:
-            - switch.is_off: relay1
-            - switch.is_off: relay2
-            - switch.is_off: relay4
-        then:
-          - switch.turn_off: red_led
-- platform: gpio
-  name: "PS4"
-  icon: mdi:power-socket-au
-  id: relay4
-  pin:
-    number: GPIO14
-    inverted: True
-  restore_mode: RESTORE_DEFAULT_OFF
-  on_turn_on:
-  - switch.turn_on: red_led
-  on_turn_off:
-    - if:
-        condition:
-          and:
-            - switch.is_off: relay1
-            - switch.is_off: relay2
-            - switch.is_off: relay3
-        then:
-          - switch.turn_off: red_led
-- platform: gpio
-  name: "PS USB"
-  icon: mdi:usb
-  id: relay5
-  pin:
-    number: GPIO16
-    inverted: False
-  restore_mode: RESTORE_DEFAULT_ON
+  - platform: gpio
+    name: "PS1"
+    icon: mdi:power-socket-au
+    id: relay1
+    pin:
+      number: GPIO4
+      inverted: True
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - switch.turn_on: red_led
+    on_turn_off:
+      - if:
+          condition:
+            and:
+              - switch.is_off: relay2
+              - switch.is_off: relay3
+              - switch.is_off: relay4
+          then:
+            - switch.turn_off: red_led
+  - platform: gpio
+    name: "PS2"
+    icon: mdi:power-socket-au
+    id: relay2
+    pin:
+      number: GPIO13
+      inverted: True
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - switch.turn_on: red_led
+    on_turn_off:
+      - if:
+          condition:
+            and:
+              - switch.is_off: relay1
+              - switch.is_off: relay3
+              - switch.is_off: relay4
+          then:
+            - switch.turn_off: red_led
+  - platform: gpio
+    name: "PS3"
+    icon: mdi:power-socket-au
+    id: relay3
+    pin:
+      number: GPIO12
+      inverted: True
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - switch.turn_on: red_led
+    on_turn_off:
+      - if:
+          condition:
+            and:
+              - switch.is_off: relay1
+              - switch.is_off: relay2
+              - switch.is_off: relay4
+          then:
+            - switch.turn_off: red_led
+  - platform: gpio
+    name: "PS4"
+    icon: mdi:power-socket-au
+    id: relay4
+    pin:
+      number: GPIO14
+      inverted: True
+    restore_mode: RESTORE_DEFAULT_OFF
+    on_turn_on:
+      - switch.turn_on: red_led
+    on_turn_off:
+      - if:
+          condition:
+            and:
+              - switch.is_off: relay1
+              - switch.is_off: relay2
+              - switch.is_off: relay3
+          then:
+            - switch.turn_off: red_led
+  - platform: gpio
+    name: "PS USB"
+    icon: mdi:usb
+    id: relay5
+    pin:
+      number: GPIO16
+      inverted: False
+    restore_mode: RESTORE_DEFAULT_ON
 
-- platform: gpio
-  internal: true
-  id: red_led
-  pin:
-    number: GPIO3
-    inverted: True
+  - platform: gpio
+    internal: true
+    id: red_led
+    pin:
+      number: GPIO3
+      inverted: True
 
-- platform: restart
-  name: '${friendly_name} REBOOT'
+  - platform: restart
+    name: "${friendly_name} REBOOT"
 
 binary_sensor:
-- platform: gpio
-  name: "Button"
-  pin:
-    number: GPIO5
-    mode: INPUT_PULLUP
-    inverted: False
-  internal: true
-  on_press:
-    - switch.toggle: relay5
+  - platform: gpio
+    name: "Button"
+    pin:
+      number: GPIO5
+      mode: INPUT_PULLUP
+      inverted: False
+    internal: true
+    on_press:
+      - switch.toggle: relay5
 
 status_led:
   id: blue_led
@@ -155,6 +156,6 @@ status_led:
     number: GPIO0
     inverted: True
 
-text_sensor:  
+text_sensor:
   - platform: version
     name: ${friendly_name} ESPhome Version

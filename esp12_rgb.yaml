@@ -1,7 +1,8 @@
 esphome:
   name: esp12_rgb
   platform: esp8266
-  board: esp12e
+  board:
+    esp12e
     #  board_build.f_cpu: 160000000L
 
 wifi:
@@ -21,13 +22,14 @@ web_server:
   auth:
     username: !secret web_server_user
     password: !secret web_server_password
-      
+
 # Enable logging
 logger:
 
 # Enable Home Assistant API
 api:
-  password: !secret hass_password
+  encryption:
+    key: !secret hass_key
 
 ota:
   password: !secret hass_password
