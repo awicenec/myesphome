@@ -41,7 +41,7 @@ ota:
 sensor:
   - platform: htu21d
     temperature:
-      name: "Living Room Temperature"
+      name: "Bedroom Temperature"
     humidity:
-      name: "Living Room Humidity"
+      name: "Bedroom Humidity"
     update_interval: 60s
