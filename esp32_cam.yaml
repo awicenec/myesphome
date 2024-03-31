@@ -1,6 +1,10 @@
 esphome:
-  name: esp32_cam
-  platform: ESP32
+  name: esp32_cam_new
+esp32:
+  framework:
+    type:
+      arduino
+      #    platform_version: 6.0.1
   board: esp32cam
 
 time:
@@ -41,17 +45,17 @@ ota:
 esp32_camera:
   name: ESP32 Camera
   external_clock:
-    pin: GPIO0
+    pin: GPIO21
     frequency: 20MHz
   i2c_pins:
     sda: GPIO26
     scl: GPIO27
-  data_pins: [GPIO5, GPIO18, GPIO19, GPIO21, GPIO36, GPIO39, GPIO34, GPIO35]
+  data_pins: [GPIO4, GPIO5, GPIO18, GPIO19, GPIO36, GPIO39, GPIO34, GPIO35]
   vsync_pin: GPIO25
   href_pin: GPIO23
   pixel_clock_pin: GPIO22
   power_down_pin: GPIO32
-  resolution: 800x600
+  resolution: 640x480
   jpeg_quality: 20
   max_framerate: 15fps
 
@@ -63,12 +67,12 @@ esp32_camera_web_server:
 
 output:
   - platform: gpio
-    pin: GPIO4
-    id: gpio_4
+    pin: GPIO2
+    id: gpio_2
 light:
   - platform: binary
-    output: gpio_4
-    name: entreance light
+    output: gpio_2
+    name: blue led
     id: camera_flash
 
 sensor:

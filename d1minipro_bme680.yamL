@@ -1,0 +1,95 @@
+esphome:
+  name: d1minipro_bme680
+  platform: ESP8266
+  board: d1_mini
+
+time:
+  - platform: sntp
+    id: sntp_time
+i2c:
+  scan: True
+  id: bus_a
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  fast_connect: on
+  reboot_timeout: 0s
+  power_save_mode: high
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "d1minipro Fallback Hotspot"
+    password: !secret fallback_password
+
+captive_portal:
+
+# Enable web server
+web_server:
+  port: 80
+  auth:
+    username: !secret web_server_user
+    password: !secret web_server_password
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret hass_key
+
+ota:
+  password: !secret ota_password
+
+# Example configuration entry
+sensor:
+  - platform: bme680
+    temperature:
+      name: "BME680 Temperature"
+      oversampling: 16x
+    pressure:
+      name: "BME680 Pressure"
+    humidity:
+      id: "humidity"
+      name: "BME680 Humidity"
+    gas_resistance:
+      id: "gas_resistance"
+      name: "BME680 Gas Resistance"
+    address: 0x77
+    update_interval: 60s
+  - platform: template
+    name: "BME680 Indoor Air Quality"
+    id: iaq
+    icon: "mdi:gauge"
+    # caulculation: comp_gas = log(R_gas[ohm]) + 0.04 log(Ohm)/%rh * hum[%rh]
+    lambda: |-
+      return log(id(gas_resistance).state) + 0.04 *  id(humidity).state;
+text_sensor:
+  - platform: template
+    name: "BME680 IAQ Classification"
+    icon: "mdi:checkbox-marked-circle-outline"
+    lambda: |-
+      if (int(id(iaq).state) <= 50) {
+        return {"Excellent"};
+      }
+      else if (int(id(iaq).state) <= 100) {
+        return {"Good"};
+      }
+      else if (int(id(iaq).state) <= 150) {
+        return {"Lightly polluted"};
+      }
+      else if (int(id(iaq).state) <= 200) {
+        return {"Moderately polluted"};
+      }
+      else if (int(id(iaq).state) <= 250) {
+        return {"Heavily polluted"};
+      }
+      else if (int(id(iaq).state) <= 350) {
+        return {"Severely polluted"};
+      }
+      else if (int(id(iaq).state) <= 500) {
+        return {"Extremely polluted"};
+      }
+      else {
+        return {"unknown"};
+      }

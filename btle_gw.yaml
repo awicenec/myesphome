@@ -1,0 +1,113 @@
+substitutions:
+  device_name: "ble-monitor"
+  friendly_name: "BLE Monitor Gateway"
+
+esphome:
+  name: ${device_name}
+  comment: ${friendly_name}
+  name_add_mac_suffix: True
+
+external_components:
+  - source: github://myhomeiot/esphome-components
+
+logger:
+
+esp32:
+  variant: ESP32
+  board: featheresp32
+  framework:
+    type: arduino 
+      #    version: 2.0.7
+      #    platform_version: 6.0.1
+
+api:
+  reboot_timeout: 1h
+  encryption:
+    key: !secret hass_key
+
+web_server:
+  port: 80
+
+ota:
+  password: !secret hass_password
+
+wifi:
+  ap:
+    ssid: "BLE-MONITOR"
+
+captive_portal:
+
+improv_serial:
+
+esp32_ble_tracker:
+
+sensor:
+  - platform: uptime
+    name: Uptime
+    id: sys_uptime
+    update_interval: 10s
+  - platform: wifi_signal 
+    name: RSSI
+    id: wifi_rssi
+    update_interval: 10s
+    entity_category: "diagnostic"
+  - platform: template
+    id: esp_memory
+    icon: mdi:memory
+    name: ESP Free Memory
+    lambda: return heap_caps_get_free_size(MALLOC_CAP_INTERNAL) / 1024;
+    unit_of_measurement: 'kB'
+    state_class: measurement
+    entity_category: "diagnostic"
+    
+ble_gateway:
+  id: blegateway
+  on_ble_advertise:
+    then:
+      homeassistant.event:
+        event: esphome.on_ble_advertise
+        data:
+          packet: !lambda return packet;
+#          gateway_id: ${device_id}
+
+binary_sensor:
+  - platform: homeassistant
+    id: ble_gateway_discovery
+    entity_id: binary_sensor.ble_gateway
+    attribute: discovery
+    on_state:
+      then:
+        lambda: id(blegateway).set_discovery(x);
+  - platform: status
+    name: Online
+    id: ink_ha_connected
+
+text_sensor:
+  - platform: homeassistant
+    id: ble_gateway_devices
+    entity_id: binary_sensor.ble_gateway
+    attribute: devices
+    on_value:
+      then:
+        lambda: id(blegateway).set_devices(x);
+
+switch:
+  - platform: template
+    id: switch_ble_gateway_discovery
+    name: BLE Gateway Discovery
+    icon: mdi:bluetooth-connect
+    lambda: return id(blegateway).get_discovery();
+    turn_on_action: [lambda: id(blegateway).set_discovery(true);]
+    turn_off_action: [lambda: id(blegateway).set_discovery(false);]
+    disabled_by_default: true
+    entity_category: config
+
+button:
+  - platform: restart
+    # disabled_by_default: True
+    icon: mdi:power-cycle
+    name: "ESP Reboot"
+  - platform: factory_reset
+    disabled_by_default: True
+    name: Factory Reset
+    id: factory_reset_all
