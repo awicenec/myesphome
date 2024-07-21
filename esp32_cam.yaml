@@ -40,6 +40,7 @@ api:
     key: !secret hass_key
 
 ota:
+  platform: esphome
   password: !secret hass_password
 
 esp32_camera:
@@ -55,9 +56,9 @@ esp32_camera:
   href_pin: GPIO23
   pixel_clock_pin: GPIO22
   power_down_pin: GPIO32
-  resolution: 640x480
+  resolution: 800x600
   jpeg_quality: 20
-  max_framerate: 15fps
+  max_framerate: 10fps
 
 esp32_camera_web_server:
   - port: 8080
