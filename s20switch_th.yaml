@@ -41,6 +41,7 @@ esphome:
   board: esp8285
 
 ota:
+  platform: esphome
   password: !secret ota_password
 
 sensor:

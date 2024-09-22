@@ -35,6 +35,7 @@ api:
     key: !secret hass_key
 
 ota:
+  platform: esphome
   password: !secret ota_password
 logger:
 improv_serial:

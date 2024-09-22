@@ -35,6 +35,7 @@ api:
   encryption:
     key: !secret hass_key
 ota:
+  platform: esphome
   password: !secret hass_password
 
 sensor:

@@ -37,6 +37,7 @@ uart:
   baud_rate: 19200
 
 ota:
+  platform: esphome
   password: !secret ota_password
 
 api:
@@ -92,7 +93,7 @@ remote_receiver:
   pin: 4
   dump: raw
   filter: 5us
-  tolerance: 50
+  tolerance: 50%
   idle: 3ms
 
 remote_transmitter:
