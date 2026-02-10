@@ -1,0 +1,371 @@
+substitutions:
+  icon_font: mdi_icons_40
+  text_font: nunito_24
+  text_color: white
+  bg_color: black
+  button_on_color: "ep_orange"
+  button_off_color: "very_dark_gray"
+  icon_on_color: "yellow"
+  icon_off_color: "gray"
+  label_on_color: "white"
+  label_off_color: "gray50"
+  button_text_color: "white"
+  button_height_single: '109px'
+  button_height_double: '228px'
+  button_width: '150px'
+  $screen_night_minute: "0"
+  $screen_night_hour: "20"
+  $screen_day_minute: "0"
+  $screen_day_hour: "7"
+  touchscreen_idle_timeout: "90s"
+  touchscreen_daytime_brightness: "85%"
+  touchscreen_nighttime_brightness: "50%"
+  touchscreen_screensaver_brightness: "20%"
+  # Boot screen configuration
+  boot_screen_delay: 10s
+
+esphome:
+  name: "weather_display"
+
+esp32:
+  board: esp32dev
+  framework:
+    type: esp-idf
+
+# Enable logging
+logger:
+
+network:
+
+# Wifi information
+api:
+  encryption:
+    key: !secret hass_key
+  on_client_connected:
+    - script.execute: time_update
+    - delay: 3s
+    - script.execute: fetch_weather_forecast
+
+font:
+  - file: "fonts/materialdesignicons-webfont.ttf"
+    id: icons_24
+    size: 24
+    bpp: 4
+    glyphs: [
+      "\U000F05A9",  # WIFI
+      "\U000F06D9", # garage
+      "\U000F06DA", # garage-open
+      "\U000F0872", # garage-alert
+      ]
+
+binary_sensor:
+  - platform: status
+    name: Status sensor
+
+packages:
+  hardware: !include "esphome-modular-lvgl-buttons/hardware/sunton-esp32-3248s035.yaml"
+  wifi: !include "esphome-modular-lvgl-buttons/common/wifi.yaml"
+  colors: !include esphome-modular-lvgl-buttons/common/color.yaml
+  # Fonts you need
+  fonts: !include esphome-modular-lvgl-buttons/common/fonts.yaml
+  # 1000s of glyphs
+  glyphs: !include esphome-modular-lvgl-buttons/common/mdi_glyph_substitutions.yaml
+  info: !include esphome-modular-lvgl-buttons/pages/info.yaml
+  sensors: !include esphome-modular-lvgl-buttons/sensors/sensors_base.yaml
+  theme_style: !include esphome-modular-lvgl-buttons/common/theme_style.yaml
+  backlight_time: !include
+    file: esphome-modular-lvgl-buttons/common/backlight_time.yaml
+    vars:
+      touchscreen_daytime_brightness: "${touchscreen_daytime_brightness}"
+      touchscreen_nighttime_brightness: "${touchscreen_nighttime_brightness}"
+      touchscreen_idle_timeout: "${touchscreen_idle_timeout}"
+      touchscreen_night_hour: "0"
+      touchscreen_night_minute: "0"
+  # Weather packages
+  # Display weather forecast using direct HA action (no template sensor needed!)
+  # Icons are included automatically in the action file
+  weather_forecast: !include
+    file: esphome-modular-lvgl-buttons/weather_homeassistant/weather_forecast_action.yaml
+    vars:
+      size: 80
+      weather_entity: weather.home
+  # Get todays weather and display it (icons included automatically)
+  # weather_today_200: !include
+  #   file: esphome-modular-lvgl-buttons/weather_homeassistant/weather_today.yaml
+  #   vars:
+  #     size: 100
+  #     weather_entity: weather.home
+  #     weather_summary: sensor.home_hourly_summary
+
+script:
+  - id: time_update
+    then:
+      - lvgl.label.update:
+          id: current_time
+          text: !lambda 'return id(system_time).now().strftime("%H:%M");'  # 24-hour format
+      - lvgl.label.update:
+          id: month_day
+          text: !lambda |- # Month Day
+            auto time = id(system_time).now();
+            int day = time.day_of_month;
+            char strftime_buf[64];
+            snprintf(strftime_buf, sizeof(strftime_buf), "%s %d", time.strftime("%B").c_str(), day);
+            return {strftime_buf};
+text:
+  - platform: lvgl 
+    name: wd_out_now
+    widget: lbl_weather_outdoor_now
+    mode: text
+  - platform: lvgl
+    name: fr_garage_icon
+    widget: lbl_garage_status
+    mode: text
+
+# Styles for Weather forecast
+.forecast_styles:
+    - &forecast_obj_base
+      height: SIZE_CONTENT
+      width: SIZE_CONTENT
+      bg_color: white
+      radius: 3
+      pad_top: 2
+      pad_bottom: 2
+      layout:
+        type: flex
+        flex_flow: COLUMN
+        flex_align_cross: center
+        flex_align_track: center
+        pad_column: 0
+        pad_row: 2
+
+    - &forecast_label_base
+      text_font: nunito_24
+      height: SIZE_CONTENT
+
+    - &forecast_label_base_lo
+      height: SIZE_CONTENT
+      text_font: nunito_18
+      text_color: dodgerblue
+
+    - &forecast_image_base
+      height: SIZE_CONTENT
+
+lvgl:
+  pages:
+    - id: main_page
+      layout: 4x4
+      styles: page_style
+      <<: !include esphome-modular-lvgl-buttons/widgets/swipe_navigation.yaml
+      # bg_color: White
+      widgets:
+          - container:
+              grid_cell_x_align: stretch
+              grid_cell_y_align: stretch
+              grid_cell_row_pos: 0
+              grid_cell_column_pos: 0
+              grid_cell_row_span: 1
+              grid_cell_column_span: 1
+              outline_width: 1   # debug code - This is for visualizing boundries remove for production
+              outline_color: grey # debug code - This is for visualizing boundries remove for production
+              widgets:
+                - label:
+                    text: "12:00"
+                    id: current_time
+                    align: top_mid
+                    text_align: center
+                    text_font: nunito_36
+                - label:
+                    text: "September 19"
+                    id: month_day
+                    align: bottom_mid
+                    text_font: nunito_14
+                    text_align: center
+
+          - container:
+              grid_cell_x_align: stretch
+              grid_cell_y_align: stretch
+              grid_cell_row_pos: 0
+              grid_cell_column_pos: 2
+              grid_cell_row_span: 1
+              grid_cell_column_span: 1
+              # outline_width: 1   # debug code - This is for visualizing boundries remove for production
+              # outline_color: red # debug code - This is for visualizing boundries remove for production
+              widgets:
+                - label:
+                    text: "--.- °C"
+                    id: lbl_weather_outdoor_now
+                    align: top_mid
+                    text_align: center
+                    text_font: nunito_36
+                - label:
+                    text: "Temp. outside"
+                    id: lbl_weather_outdoor_now_label
+                    align: bottom_mid
+                    text_font: nunito_14
+                    text_align: center
+
+          - container:
+              grid_cell_x_align: stretch
+              grid_cell_y_align: stretch
+              grid_cell_row_pos: 0
+              grid_cell_column_pos: 3
+              grid_cell_row_span: 1
+              grid_cell_column_span: 1
+              # outline_width: 1   # debug code - This is for visualizing boundries remove for production
+              # outline_color: red # debug code - This is for visualizing boundries remove for production
+              widgets:
+                - obj:
+                    width: 80
+                    height: 40
+                    pad_all: 2
+                    widgets:
+                      - label:
+                          text_font: icons_24
+                          text: "\U000F05A9"
+                          id: lbl_hastatus
+                          hidden: false
+                          align: CENTER
+                          text_color: 0x00FF00
+                      - label:
+                          text_font: icons_24
+                          text: "\U000F06D9"
+                          id: lbl_garage_status
+                          hidden: false
+                          recolor: true
+                          align: RIGHT_MID
+                          text_color: 0x00DD00
+                          on_press:
+                            - homeassistant.service:
+                                service: homeassistant.toggle
+                                data:
+                                  entity_id: switch.garage_door
+
+
+          # - container:
+          #     grid_cell_x_align: stretch
+          #     grid_cell_y_align: stretch
+          #     grid_cell_row_pos: 1
+          #     grid_cell_column_pos: 1
+          #     grid_cell_row_span: 1
+          #     grid_cell_column_span: 1
+          #     # outline_width: 1   # debug code - This is for visualizing boundries remove for production
+          #     # outline_color: red # debug code - This is for visualizing boundries remove for production
+          #     widgets:
+          #       - image:
+          #           src: unknown_100
+          #           id: weather_condition_icon
+          #           align: center
+ 
+          # - container:
+          #     grid_cell_x_align: stretch
+          #     grid_cell_y_align: stretch
+          #     grid_cell_row_pos: 1
+          #     grid_cell_column_pos: 2
+          #     grid_cell_row_span: 1
+          #     grid_cell_column_span: 2
+          #     # outline_width: 1   # debug code - This is for visualizing boundries remove for production
+          #     # outline_color: red # debug code - This is for visualizing boundries remove for production
+          #     widgets:
+          #       - label:
+          #           text: "Loading..."
+          #           id: weather_summary_today
+          #           text_font: nunito_24
+          #           long_mode: wrap
+          #           width: 100%
+
+          - container:
+              grid_cell_x_align: stretch
+              grid_cell_y_align: stretch
+              grid_cell_row_pos: 1
+              grid_cell_column_pos: 0
+              grid_cell_row_span: 3
+              grid_cell_column_span: 4
+              # outline_width: 1   # debug code - This is for visualizing boundries remove for production
+              # outline_color: red # debug code - This is for visualizing boundries remove for production
+              layout: 1x4
+              widgets:
+                  - obj:
+                      <<: *forecast_obj_base
+                      grid_cell_row_pos: 0
+                      grid_cell_column_pos: 0
+                      widgets:
+                          - label:
+                              id: forecast_day_0
+                              <<: *forecast_label_base
+                              text: ???
+                          - image:
+                              id: forecast_condition_icon_0
+                              <<: *forecast_label_base
+                              src: unknown_80
+                          - label:
+                              id: forecast_temperature_hi_0
+                              <<: *forecast_label_base
+                              text: "---°"
+                          - label:
+                              id: forecast_temperature_lo_0
+                              <<: *forecast_label_base_lo
+                              text: "---°"
+                  - obj:
+                      <<: *forecast_obj_base
+                      grid_cell_row_pos: 0
+                      grid_cell_column_pos: 1
+                      widgets:
+                          - label:
+                              id: forecast_day_1
+                              <<: *forecast_label_base
+                              text: ???
+                          - image:
+                              id: forecast_condition_icon_1
+                              <<: *forecast_label_base
+                              src: unknown_80
+                          - label:
+                              id: forecast_temperature_hi_1
+                              <<: *forecast_label_base
+                              text: "---°"
+                          - label:
+                              id: forecast_temperature_lo_1
+                              <<: *forecast_label_base_lo
+                              text: "---°"
+                  - obj:
+                      <<: *forecast_obj_base
+                      grid_cell_row_pos: 0
+                      grid_cell_column_pos: 2
+                      widgets:
+                          - label:
+                              id: forecast_day_2
+                              <<: *forecast_label_base
+                              text: ???
+                          - image:
+                              id: forecast_condition_icon_2
+                              <<: *forecast_label_base
+                              src: unknown_80
+                          - label:
+                              id: forecast_temperature_hi_2
+                              <<: *forecast_label_base
+                              text: "---°"
+                          - label:
+                              id: forecast_temperature_lo_2
+                              <<: *forecast_label_base_lo
+                              text: "---°"
+                  - obj:
+                      <<: *forecast_obj_base
+                      grid_cell_row_pos: 0
+                      grid_cell_column_pos: 3
+                      widgets:
+                          - label:
+                              id: forecast_day_3
+                              <<: *forecast_label_base
+                              text: ???
+                          - image:
+                              id: forecast_condition_icon_3
+                              <<: *forecast_label_base
+                              src: unknown_80
+                          - label:
+                              id: forecast_temperature_hi_3
+                              <<: *forecast_label_base
+                              text: "---°"
+                          - label:
+                              id: forecast_temperature_lo_3
+                              <<: *forecast_label_base_lo
+                              text: "---°"
+

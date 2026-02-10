@@ -1,0 +1,340 @@
+substitutions:
+  icon_font: mdi_icons_40
+  text_font: nunito_24
+  text_color: white
+  bg_color: black
+  button_on_color: "ep_orange"
+  button_off_color: "very_dark_gray"
+  icon_on_color: "yellow"
+  icon_off_color: "gray"
+  label_on_color: "white"
+  label_off_color: "gray50"
+  button_text_color: "white"
+  button_height_single: '109px'
+  button_height_double: '228px'
+  button_width: '150px'
+  $screen_night_minute: "0"
+  $screen_night_hour: "20"
+  $screen_day_minute: "0"
+  $screen_day_hour: "7"
+  touchscreen_idle_timeout: "90s"
+  touchscreen_daytime_brightness: "85%"
+  touchscreen_nighttime_brightness: "50%"
+  touchscreen_screensaver_brightness: "20%"
+  # Boot screen configuration
+  boot_screen_delay: 4s
+
+esphome:
+  name: "guition_media_controller"
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+
+psram:
+  mode: octal
+    #speed: 120MHz
+
+# Enable logging
+logger:
+
+network:
+
+
+ota:
+  - platform: esphome
+    password: !secret hass_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Guition-360X360-Jc3636W518"
+    password: !secret fallback_password
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret hass_key
+  on_client_connected:
+    - logger.log: "Client connected to API"
+    - script.execute: startup_script
+
+font:
+  - file: "fonts/materialdesignicons-webfont.ttf"
+    id: icons_72
+    size: 72
+    bpp: 4
+    glyphs: [
+      "\U000F05A9",  # WIFI
+      "\U000F04C3", # speaker
+      "\U000F04C4", # speaker_off
+      "\U000F0502", # TV on
+      "\U000F083B", # TV off
+      "\U000F03E4",  # pause icon
+      "\U000F040A",  # play icon
+      ]
+
+script:
+  - id: startup_script
+    then:
+      - logger.log:
+          format: "Executing script: %s"
+          args: ["startup_script"]
+      - lvgl.label.update:
+          id: volume_label
+          text: !lambda |-
+            char speaker_on[] = "#00DD00 \U000F04C3";
+            char speaker_off[] = "#DD0000 \U000F04C4";
+            if (id(tv_state).state == "off") {
+              return speaker_off;
+            } else if (!id(tv_is_muted).state) {
+              return speaker_on;
+            } else {
+              return speaker_off;
+            };
+      - lvgl.label.update:
+          id: tv_label
+          text: !lambda |-
+            char tv_on[] = "#00DD00 \U000F0502";
+            char tv_off[] = "#DD0000 \U000F083B";
+            if (id(tv_state).state == "off") {
+              return tv_off;
+            } else {
+              return tv_on;
+            };
+      - lvgl.label.update:
+          id: pause_label
+          text: !lambda |-
+            char play_icon[] = "#DDDD00 \U000F040A";
+            char pause_icon[] = "#DDDD00 \U000F03E4";
+            if (id(tv_state).state != "playing") {
+              return play_icon;
+            } else {
+              return pause_icon;
+            };
+
+binary_sensor:
+  - platform: status
+    name: Status sensor
+  - platform: homeassistant
+    id: tv_is_off
+    entity_id: media_player.lg_c4
+    attribute: is_off
+    name: "Media Player Off"
+  - platform: homeassistant
+    id: tv_is_on
+    entity_id: media_player.lg_c4
+    attribute: is_on
+    name: "Media Player On"
+  - platform: homeassistant
+    id: tv_is_idle
+    entity_id: media_player.lg_c4
+    attribute: is_idle
+    name: "Media Player Idle"
+  - platform: homeassistant
+    id: tv_is_muted
+    entity_id: media_player.lg_c4
+    attribute: is_volume_muted
+    name: "Media Player Muted"
+    on_state:
+      if:
+        condition:
+          - binary_sensor.is_on: tv_is_muted
+        then:
+          - lvgl.label.update:
+              id: volume_label
+              text: "#DD0000 \U000F04C4" # speaker off
+        else:
+          - lvgl.label.update:
+              id: volume_label
+              text: "#00DD00 \U000F04C3" # speaker
+
+text_sensor:
+  - platform: homeassistant
+    id: tv_state
+    entity_id: media_player.lg_c4
+    name: "Media Player Playing"
+    on_value:
+      if:
+        condition:
+          lambda: 'return id(tv_state).state == "playing";'
+        then:
+          - lvgl.label.update:
+              id: pause_label
+              text: "#DDDD00 \U000F03E4" # pause icon
+        else:
+          - lvgl.label.update:
+              id: pause_label
+              text: "#DDDD00 \U000F040A" # play icon
+  - platform: homeassistant
+    id: tv_volume_level
+    entity_id: media_player.lg_c4
+    attribute: volume_level
+    name: "Media Player Volume Level"
+    on_value:
+      - lvgl.arc.update:
+          id: volume_arc
+          value: !lambda |-
+            auto n = parse_number<float>(x);
+            return n.value() * float(100);
+text:
+  - platform: lvgl
+    name: fr_tv_label
+    widget: tv_label
+    mode: text
+
+  - platform: lvgl
+    name: fr_volume_label
+    widget: volume_label
+    mode: text
+
+packages:
+  hardware: !include "esphome-modular-lvgl-buttons/hardware/guition-esp32-jc3636W518.yaml"
+  wifi: !include "esphome-modular-lvgl-buttons/common/wifi.yaml"
+  colors: !include esphome-modular-lvgl-buttons/common/color.yaml
+  # Fonts you need
+  fonts: !include esphome-modular-lvgl-buttons/common/fonts.yaml
+  # 1000s of glyphs
+  glyphs: !include esphome-modular-lvgl-buttons/common/mdi_glyph_substitutions.yaml
+  # info: !include esphome-modular-lvgl-buttons/pages/info.yaml
+  # sensors: !include esphome-modular-lvgl-buttons/sensors/sensors_base.yaml
+  theme_style: !include esphome-modular-lvgl-buttons/common/theme_style.yaml
+  # backlight_time: !include
+  #   file: esphome-modular-lvgl-buttons/common/backlight_time.yaml
+  #   vars:
+  #     touchscreen_daytime_brightness: "${touchscreen_daytime_brightness}"
+  #     touchscreen_nighttime_brightness: "${touchscreen_nighttime_brightness}"
+  #     touchscreen_idle_timeout: "${touchscreen_idle_timeout}"
+  #     touchscreen_night_hour: "0"
+  #     touchscreen_night_minute: "0"
+
+
+lvgl:
+  displays:
+    - main_display
+  touchscreens:
+    - my_touchscreen
+  pages:
+    - id: canvas_1
+      bg_color: slate_blue_gray
+      widgets:
+        - arc:
+            id: volume_arc
+            x: 10
+            y: 10
+            width: 340
+            height: 340
+            value: 80
+            min_value: 0
+            max_value: 100
+            adjustable: true
+            start_angle: 0
+            end_angle: 350
+            rotation: 0
+            change_rate: 360
+            arc_color: 0x000000
+            indicator:
+              arc_color: 0x00DD00
+              arc_opa: 50%
+              arc_rounded: true
+            knob:
+              bg_color: 0x555555
+              radius: 20
+            on_change:
+              - lvgl.label.update:
+                  id: volume_label
+                  text: "#00DD00 \U000F04C3" # speaker
+              - homeassistant.service:
+                  service: media_player.volume_set
+                  data:
+                    entity_id: media_player.lg_c4
+                    volume_level: !lambda 'return x/100;'
+        - label:
+            id: volume_label
+            text_font: icons_72
+            hidden: false
+            recolor: true
+            text_align: center
+            x: 140
+            y: 240
+            width: 80
+            height: 80
+            text: "#DD0000 \U000F04C4" # speaker off
+            on_click:
+              if:
+                condition:
+                  - binary_sensor.is_on: tv_is_muted
+                then:
+                  - homeassistant.service:
+                      service: media_player.volume_mute
+                      data:
+                        entity_id: media_player.lg_c4
+                        is_volume_muted: "false"
+                  - lvgl.label.update:
+                      id: volume_label
+                      text: "#00DD00 \U000F04C3" # speaker
+                else:
+                  - homeassistant.service:
+                      service: media_player.volume_mute
+                      data:
+                        entity_id: media_player.lg_c4
+                        is_volume_muted: "true"
+                  - lvgl.label.update:
+                      id: volume_label
+                      text: "#DD0000 \U000F04C4" # speaker off
+        - label:
+            id: pause_label
+            text_font: icons_72
+            hidden: false
+            recolor: true
+            text_align: center
+            x: 140
+            y: 140
+            width: 80
+            height: 80
+            text: "#DDDD00 \U000F03E4" # pause icon
+            on_click:
+              - homeassistant.service:
+                  service: media_player.media_play_pause
+                  data:
+                    entity_id: media_player.lg_c4
+              - if:
+                  condition:
+                    or:
+                      lambda: 'return id(tv_state).state != "playing";'
+                  then:
+                    - lvgl.label.update:
+                        id: pause_label
+                        text: "#DDDD00 \U000F03E4" # pause icon
+                  else:
+                    - lvgl.label.update:
+                        id: pause_label
+                        text: "#DDDD00 \U000F040A" # play icon
+        - label:
+            id: tv_label
+            text_font: icons_72
+            text: "\U000F083B" # TV off
+            hidden: false
+            recolor: true
+            # align: RIGHT_MID
+            text_color: 0xDD0000
+            text_align: center
+            x: 140
+            y: 40
+            width: 80
+            height: 80
+            on_click:
+              - homeassistant.service:
+                  service: media_player.toggle
+                  data:
+                    entity_id: media_player.lg_c4

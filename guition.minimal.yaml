@@ -1,0 +1,24 @@
+esphome:
+  name: guition-360x360-jc3636w518
+  friendly_name: Guition 360x360 jc3636w518
+  platformio_options:
+    friendly_name: JC3636W518CN
+    board_build.flash_mode: dio
+    board_build.f_flash: 80000000L
+    board_build.f_cpu: 240000000L
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+
+# Example minimal configuration entry
+display:
+  - platform: mipi_spi
+    model: JC3636W518

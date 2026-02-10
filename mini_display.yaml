@@ -1,0 +1,109 @@
+esphome:
+  name: tv-controller
+  friendly_name: TV-controller
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+
+# Enable logging
+logger:
+  level: DEBUG
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret hass_key
+
+ota:
+  platform: esphome
+  password: !secret hass_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+i2c:
+  sda: 33
+  scl: 32
+  scan: true
+  id: bus_a
+
+spi:
+  clk_pin: 14
+  mosi_pin: 13
+  miso_pin: 12
+
+light:
+  - platform: rgb
+    name: "Status Light"
+    red: red_GPIO
+    green: green_GPIO
+    blue: blue_GPIO
+  - platform: monochromatic
+    output: backlight_pin
+    name: "Display Backlight"
+    id: back_light
+    restore_mode: ALWAYS_ON
+
+output:
+  - platform: ledc
+    pin: 4
+    id: red_GPIO
+    inverted: True
+  - platform: ledc
+    pin: 16
+    id: green_GPIO
+    inverted: True
+  - platform: ledc
+    pin: 17
+    id: blue_GPIO
+    inverted: True
+  - platform: ledc
+    pin: 27
+    id: backlight_pin
+
+
+display:
+  - platform: ili9xxx
+    id: my_display
+    model: ST7796
+    dc_pin: 2
+    cs_pin: 15
+    dimensions: 320x480
+    update_interval: never
+    auto_clear_enabled: false
+    invert_colors: false
+
+touchscreen:
+  platform: gt911
+  id: my_touch
+  update_interval: 50ms
+#  interrupt_pin: 21 # maybe not connected?
+#  reset_pin: 25 # From a openhasp config, appears to be the 'normal' esp32 reset pin?
+
+color:
+  - id: my_red
+    red: 100%
+    green: 0%
+    blue: 0%
+
+# font:
+#   - file: "gfonts://Martian+Mono"
+#     id: large
+#     size: 40
+#   - file: "gfonts://Martian+Mono"
+#     id: small
+#     size: 20
+
+lvgl:
+  touchscreens:
+    - my_touch
+  buffer_size: 25%
+  pages:
+    - id: main_page
+      widgets:
+        - label:
+            align: CENTER
+            text: 'Hello World!'

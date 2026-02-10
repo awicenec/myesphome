@@ -1,9 +1,19 @@
+substitutions:
+  name: esp32-rgb
+  friendly_name: Dandelion
+
 esphome:
-  name: esp12_rgb
-  platform: esp8266
-  board:
-    esp12e
-    #  board_build.f_cpu: 160000000L
+  name: ${name}
+  friendly_name: ${friendly_name}
+  name_add_mac_suffix: true
+  project:
+    name: esphome.esp32-rgb
+    version: "1.0"
+
+esp32:
+  board: esp32c3
+  framework:
+    type: esp-idf
 
 wifi:
   ssid: !secret wifi_ssid
@@ -11,7 +21,7 @@ wifi:
 
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    ssid: "esp12-rgb Fallback Hotspot"
+    ssid: "esp32-rgb Fallback Hotspot"
     password: !secret fallback_password
 
 captive_portal:
@@ -37,25 +47,25 @@ ota:
 
 light:
   - platform: rgb
-    name: "Fibre light"
+    name: ${friendly_name} Light
     red: output_red
     green: output_green
     blue: output_blue
     effects:
-      - pulse:
       - random:
-      - strobe:
+      - slow_random:
+      - fast_random:
 
 output:
   - platform: esp8266_pwm
     id: output_red
-    pin: GPIO0
+    pin: GPIO4
     inverted: true
   - platform: esp8266_pwm
     id: output_green
-    pin: GPIO5
+    pin: GPIO7
     inverted: true
   - platform: esp8266_pwm
     id: output_blue
-    pin: GPIO01
+    pin: GPIO05
     inverted: true

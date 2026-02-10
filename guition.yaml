@@ -1,0 +1,213 @@
+esphome:
+  name: guition-360x360-jc3636w518
+  friendly_name: Guition 360x360 jc3636w518
+  platformio_options:
+    friendly_name: JC3636W518CN
+    board_build.flash_mode: dio
+    board_build.f_flash: 80000000L
+    board_build.f_cpu: 240000000L
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+    sdkconfig_options:
+      CONFIG_ESP32S3_DEFAULT_CPU_FREQ_240: "y"
+      CONFIG_ESP32S3_DATA_CACHE_64KB: "y"
+      CONFIG_ESP32S3_DATA_CACHE_LINE_64B: "y"
+      CONFIG_SPIRAM_FETCH_INSTRUCTIONS: y
+      CONFIG_SPIRAM_RODATA: y
+
+psram:
+  mode: octal
+    #speed: 120MHz
+
+# Enable logging
+logger:
+
+# Enable Home Assistant API
+api:
+  encryption:
+    key: !secret hass_key
+
+ota:
+  - platform: esphome
+    password: !secret hass_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+
+  # Enable fallback hotspot (captive portal) in case wifi connection fails
+  ap:
+    ssid: "Guition-360X360-Jc3636W518"
+    password: !secret fallback_password
+
+captive_portal:
+
+i2s_audio:
+  - id: i2s_in
+    i2s_lrclk_pin: GPIO45
+    i2s_bclk_pin: GPIO42
+  - id: i2s_out
+    i2s_lrclk_pin: GPIO16
+    i2s_bclk_pin: GPIO18
+    i2s_mclk_pin: GPIO21
+
+microphone:
+  - platform: i2s_audio
+    id: i2s_microphone
+    i2s_audio_id: i2s_in
+    i2s_din_pin: GPIO46
+    adc_type: external
+    pdm: false
+    channel: left
+    sample_rate: 16000
+    bits_per_sample: 32bit
+speaker:
+  - platform: i2s_audio
+    id: i2s_speaker
+    i2s_audio_id: i2s_out
+    i2s_dout_pin: GPIO17
+    dac_type: external
+    channel: stereo
+    # i2s_comm_fmt: i2s_msb
+voice_assistant:
+  id: va
+  microphone: i2s_microphone
+  speaker: i2s_speaker
+  use_wake_word: false
+  noise_suppression_level: 2 #4
+  auto_gain: 31dBFS # 31dBFS
+  volume_multiplier: 2 # 8.0
+
+binary_sensor:
+  - platform: gpio
+    name: Click_to_Converse
+    id: Click_to_Converse
+    pin:
+      number: 0  
+    on_press:
+      - if:
+          condition: 
+            - voice_assistant.is_running
+          then:
+            - voice_assistant.stop:
+          else:
+            - voice_assistant.start:
+    
+spi:
+  id: display_qspi
+  type: quad
+  clk_pin: 9
+  data_pins: [11, 12, 13, 14]
+
+i2c:
+  sda: 7
+  scl: 8
+  id: touchscreen_bus
+
+display:
+  - platform: mipi_spi
+    model: JC3636W518
+    data_rate: 40MHz
+    id: main_display
+    spi_id: display_qspi
+    color_order: rgb
+    invert_colors: true
+    dimensions:
+      height: 360
+      width: 360
+    cs_pin: 10
+    reset_pin: GPIO47
+    # transform:
+    #   mirror_x: true
+    #   mirror_y: true
+    # rotation: 90
+    #show_test_card: true # must enable update_interval, auto_clear_enable
+    #update_interval: never #comment out for LVGL
+    auto_clear_enabled: false #set to false for LVGL
+
+lvgl:
+  #full_refresh: true # redraw whole display every time so very slow
+  displays:
+    - main_display
+  touchscreens:
+    - my_touchscreen
+  theme:
+    bar:
+      radius: 0
+      indicator:
+        radius: 0
+        arc_color: red
+      
+  pages:
+    - id: main_page
+      widgets:
+        - label:
+            align: TOP_MID
+            y: 40 # distance down from top
+            text: 'Battery Power kW'
+        - bar:
+            align: TOP_MID
+            x: 0
+            y: 60 # distance down from top
+            id: bar_power
+            indicator:
+              arc_color: green
+              radius: 0
+            mode: symmetrical
+            arc_color: blue
+            value: 25
+            width: 320
+            height: 20
+            min_value: -50
+            max_value: 100
+
+        - label:
+            align: TOP_MID
+            y: 80 # distance down from top
+            text: 'Battery Volts'
+
+        - spinner:
+            align: CENTER
+            x: 0
+            y: 0
+            spin_time: 3s
+            arc_length: 20deg
+            arc_color: 0x00ff00
+            id: spinner_id
+            indicator:
+              arc_color: 0xff0000
+
+output:
+  - platform: ledc
+    pin: GPIO15
+    id: backlight
+
+switch:
+  - platform: gpio
+    pin: GPIO48
+    id: mute
+    name: "mute"
+    restore_mode: ALWAYS_ON
+
+light:
+  - platform: monochromatic
+    output: backlight
+    id: back_light
+    name: "backlight Light" 
+    restore_mode: ALWAYS_ON
+
+touchscreen:
+  platform: cst816
+  id: my_touchscreen
+  interrupt_pin: GPIO41
+  reset_pin: GPIO40
+  display: main_display
+  i2c_id: touchscreen_bus
+  update_interval: 50ms
+  on_touch:
+    then:
+      - light.toggle: back_light
+

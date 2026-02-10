@@ -5,7 +5,8 @@ substitutions:
 
 esphome:
   name: ${device_name}
-  platform: "ESP8266"
+
+esp8266:
   board: ${board}
 
 time:
@@ -20,7 +21,7 @@ wifi:
   power_save_mode: high
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    ssid: "${name} Fallback Hotspot"
+    ssid: "${friendly_name} Fallback Hotspot"
     password: !secret fallback_password
 
 captive_portal:

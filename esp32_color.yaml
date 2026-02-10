@@ -1,10 +1,7 @@
 esphome:
-  name: d1mini_dallas
-
-esp8266:
-  board: d1_mini
-  framework:
-    version: recommended
+  name: esp32_color
+  platform: ESP32
+  board: m5stack-grey
 
 time:
   - platform: sntp
@@ -18,7 +15,7 @@ wifi:
   power_save_mode: high
   # Enable fallback hotspot (captive portal) in case wifi connection fails
   ap:
-    ssid: "Espiggy Fallback Hotspot"
+    ssid: "${name} Fallback Hotspot"
     password: !secret fallback_password
 
 captive_portal:
@@ -40,13 +37,28 @@ api:
 
 ota:
   platform: esphome
-  password: !secret ota_password
-
-one_wire:
-  - platform: gpio
-    pin: D5
+  password: !secret hass_password
+i2c:
+  scan: True
+  id: bus_a
+  sda: GPIO22
+  scl: GPIO21
 
 sensor:
-  - platform: dallas_temp
-    address: 0xD9031553B28EFF28
-    name: "Temperature outside"
+  - platform: tcs34725
+    red_channel:
+      name: "Red Channel"
+    green_channel:
+      name: "Green Channel"
+    blue_channel:
+      name: "Blue Channel"
+    clear_channel:
+      name: "Clear Channel"
+    illuminance:
+      name: "Illuminance"
+    color_temperature:
+      name: "Color Temperature"
+    glass_attenuation_factor: 1.0
+    address: 0x29
+    update_interval: 0.5s
+
