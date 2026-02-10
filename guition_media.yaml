@@ -163,19 +163,33 @@ text_sensor:
   - platform: homeassistant
     id: tv_state
     entity_id: media_player.lg_c4
-    name: "Media Player Playing"
+    name: "Media Player State"
     on_value:
-      if:
-        condition:
-          lambda: 'return id(tv_state).state == "playing";'
-        then:
-          - lvgl.label.update:
-              id: pause_label
-              text: "#DDDD00 \U000F03E4" # pause icon
-        else:
-          - lvgl.label.update:
-              id: pause_label
-              text: "#DDDD00 \U000F040A" # play icon
+      - if:
+          condition: 
+            # !lambda |-
+            #   return 'id(tv_state).state == "playing";'
+            or:
+              - text_sensor.state:
+                  id: "tv_state"
+                  state: "playing"
+              - text_sensor.state:
+                  id: "tv_state"
+                  state: "on"
+              - text_sensor.state:
+                  id: "tv_state"
+                  state: "idle"
+          then:
+            - lvgl.label.update:
+                id: pause_label
+                text: "#DDDD00 \U000F03E4" # pause icon
+            - lvgl.label.update:
+                id: tv_label
+                text: "#00DD00 \U000F0502" # tv_on icon
+          else:
+            - lvgl.label.update:
+                id: pause_label
+                text: "#DDDD00 \U000F040A" # play icon
   - platform: homeassistant
     id: tv_volume_level
     entity_id: media_player.lg_c4
@@ -187,6 +201,9 @@ text_sensor:
           value: !lambda |-
             auto n = parse_number<float>(x);
             return n.value() * float(100);
+      - lvgl.arc.update:  # set to yellow during startup
+          id: volume_arc
+          arc_color: 0x222222
 text:
   - platform: lvgl
     name: fr_tv_label
@@ -202,21 +219,11 @@ packages:
   hardware: !include "esphome-modular-lvgl-buttons/hardware/guition-esp32-jc3636W518.yaml"
   wifi: !include "esphome-modular-lvgl-buttons/common/wifi.yaml"
   colors: !include esphome-modular-lvgl-buttons/common/color.yaml
-  # Fonts you need
   fonts: !include esphome-modular-lvgl-buttons/common/fonts.yaml
-  # 1000s of glyphs
   glyphs: !include esphome-modular-lvgl-buttons/common/mdi_glyph_substitutions.yaml
   # info: !include esphome-modular-lvgl-buttons/pages/info.yaml
   # sensors: !include esphome-modular-lvgl-buttons/sensors/sensors_base.yaml
   theme_style: !include esphome-modular-lvgl-buttons/common/theme_style.yaml
-  # backlight_time: !include
-  #   file: esphome-modular-lvgl-buttons/common/backlight_time.yaml
-  #   vars:
-  #     touchscreen_daytime_brightness: "${touchscreen_daytime_brightness}"
-  #     touchscreen_nighttime_brightness: "${touchscreen_nighttime_brightness}"
-  #     touchscreen_idle_timeout: "${touchscreen_idle_timeout}"
-  #     touchscreen_night_hour: "0"
-  #     touchscreen_night_minute: "0"
 
 
 lvgl:
@@ -234,7 +241,7 @@ lvgl:
             y: 10
             width: 340
             height: 340
-            value: 80
+            value: 0
             min_value: 0
             max_value: 100
             adjustable: true
@@ -242,7 +249,7 @@ lvgl:
             end_angle: 350
             rotation: 0
             change_rate: 360
-            arc_color: 0x000000
+            arc_color: 0xDDDD00
             indicator:
               arc_color: 0x00DD00
               arc_opa: 50%
