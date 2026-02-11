@@ -18,8 +18,8 @@ substitutions:
   $screen_day_minute: "0"
   $screen_day_hour: "7"
   touchscreen_idle_timeout: "90s"
-  touchscreen_daytime_brightness: "85%"
-  touchscreen_nighttime_brightness: "50%"
+  touchscreen_daytime_brightness: "80%"
+  touchscreen_nighttime_brightness: "30%"
   touchscreen_screensaver_brightness: "20%"
   # Boot screen configuration
   boot_screen_delay: 4s
@@ -76,12 +76,14 @@ font:
     bpp: 4
     glyphs: [
       "\U000F05A9",  # WIFI
-      "\U000F04C3", # speaker
-      "\U000F04C4", # speaker_off
-      "\U000F0502", # TV on
-      "\U000F083B", # TV off
+      "\U000F04C3",  # speaker
+      "\U000F04C4",  # speaker_off
+      "\U000F0502",  # TV on
+      "\U000F083B",  # TV off
       "\U000F03E4",  # pause icon
       "\U000F040A",  # play icon
+      "\U000F1A4C",  # lightbulb_night
+      "\U000F0335",  # lightbulb
       ]
 
 script:
@@ -122,6 +124,21 @@ script:
             } else {
               return pause_icon;
             };
+
+  - id: time_update
+    then:
+      - lvgl.label.update:
+          id: current_time
+          text: !lambda 'return id(system_time).now().strftime("%H:%M");'  # 24-hour format
+      - lvgl.label.update:
+          id: month_day
+          text: !lambda |- # Month Day
+            auto time = id(system_time).now();
+            int day = time.day_of_month;
+            char strftime_buf[64];
+            snprintf(strftime_buf, sizeof(strftime_buf), "%s %d", time.strftime("%B").c_str(), day);
+            return {strftime_buf};
+
 
 binary_sensor:
   - platform: status
@@ -181,15 +198,40 @@ text_sensor:
                   state: "idle"
           then:
             - lvgl.label.update:
-                id: pause_label
-                text: "#DDDD00 \U000F03E4" # pause icon
-            - lvgl.label.update:
                 id: tv_label
                 text: "#00DD00 \U000F0502" # tv_on icon
-          else:
             - lvgl.label.update:
                 id: pause_label
-                text: "#DDDD00 \U000F040A" # play icon
+                text: "#DDDD00 \U000F03E4" # pause icon
+                state:
+                  disabled: false
+            - lvgl.arc.update:
+                id: volume_arc
+                state:
+                  disabled: false
+            - lvgl.label.update:
+                id: volume_label
+                state:
+                  disabled: false
+          else:
+            - lvgl.label.update:
+                id: tv_label
+                text: "#DD0000 \U000F083B" # tv_off icon
+            - lvgl.label.update:
+                id: pause_label
+                text: "#DD0000 \U000F03E4" # pause icon
+                state:
+                  disabled: true
+            - lvgl.arc.update:
+                id: volume_arc
+                arc_color: 0xDDDD00 # yellow
+                state:
+                  disabled: true
+            - lvgl.label.update:
+                id: volume_label
+                text: "#DD0000 \U000F04C4" # speaker off
+                state:
+                  disabled: true
   - platform: homeassistant
     id: tv_volume_level
     entity_id: media_player.lg_c4
@@ -221,8 +263,17 @@ packages:
   colors: !include esphome-modular-lvgl-buttons/common/color.yaml
   fonts: !include esphome-modular-lvgl-buttons/common/fonts.yaml
   glyphs: !include esphome-modular-lvgl-buttons/common/mdi_glyph_substitutions.yaml
-  # info: !include esphome-modular-lvgl-buttons/pages/info.yaml
-  # sensors: !include esphome-modular-lvgl-buttons/sensors/sensors_base.yaml
+  info: !include esphome-modular-lvgl-buttons/pages/info.yaml
+  sensors: !include esphome-modular-lvgl-buttons/sensors/sensors_base.yaml
+  time_sntp: !include esphome-modular-lvgl-buttons/common/time_sntp.yaml
+  backlight_time: !include
+    file: esphome-modular-lvgl-buttons/common/backlight_time.yaml
+    vars:
+      touchscreen_daytime_brightness: "${touchscreen_daytime_brightness}"
+      touchscreen_nighttime_brightness: "${touchscreen_nighttime_brightness}"
+      touchscreen_idle_timeout: "${touchscreen_idle_timeout}"
+      touchscreen_night_hour: "0"
+      touchscreen_night_minute: "0"
   theme_style: !include esphome-modular-lvgl-buttons/common/theme_style.yaml
 
 
@@ -231,9 +282,50 @@ lvgl:
     - main_display
   touchscreens:
     - my_touchscreen
+  on_idle:
+    timeout: ${touchscreen_idle_timeout}
+    then:
+      - logger.log: "LVGL is idle"
+      - select.set:
+          id: brightness_mode
+          option: "Screensaver"
+      - script.execute: apply_brightness_mode
+      - lvgl.label.update:
+          id: dim_label
+          text: "\U000F0335"
+
   pages:
+    - id: main_page
+      layout: 4x4
+      styles: page_style
+      <<: !include esphome-modular-lvgl-buttons/widgets/swipe_navigation.yaml
+      # bg_color: White
+      widgets:
+          - container:
+              grid_cell_x_align: stretch
+              grid_cell_y_align: stretch
+              grid_cell_row_pos: 0
+              grid_cell_column_pos: 0
+              grid_cell_row_span: 1
+              grid_cell_column_span: 1
+              outline_width: 1   # debug code - This is for visualizing boundries remove for production
+              outline_color: grey # debug code - This is for visualizing boundries remove for production
+              widgets:
+                - label:
+                    text: "12:00"
+                    id: current_time
+                    align: top_mid
+                    text_align: center
+                    text_font: nunito_36
+                - label:
+                    text: "September 19"
+                    id: month_day
+                    align: bottom_mid
+                    text_font: nunito_14
+                    text_align: center
+
     - id: canvas_1
-      bg_color: slate_blue_gray
+      bg_color: gray800
       widgets:
         - arc:
             id: volume_arc
@@ -345,3 +437,52 @@ lvgl:
                   service: media_player.toggle
                   data:
                     entity_id: media_player.lg_c4
+              - repeat:
+                  count: 1
+                  then:
+                    delay: 3s
+              - if:
+                  condition:
+                    - lambda: 'return id(tv_state).state == "off";'
+                  then:
+                    - lvgl.arc.update:  # set to yellow when TV is off
+                        id: volume_arc
+                        arc_color: 0x222222
+        - label:
+            id: dim_label
+            text_font: icons_72
+            text: "#FFA500 \U000F1A4C" # lightbulb_night
+            hidden: false
+            recolor: true
+            # align: RIGHT_MID
+            text_color: 0xFFA500
+            text_align: center
+            x: 40
+            y: 140
+            width: 80
+            height: 80
+            on_click:
+              - if:
+                  condition:
+                    - lambda: |-
+                        auto bv = id(display_backlight).remote_values.get_brightness();
+                        return bv < 0.5;
+                  then:
+                    - logger.log: "LVGL wakeup"
+                    - select.set:
+                        id: brightness_mode
+                        option: "Day"
+                    - lvgl.label.update:
+                        id: dim_label
+                        text: "#FFA500 \U000F1A4C"  # lightbulb_night
+                  else:
+                    - logger.log: "LVGL dim"
+                    - select.set:
+                        id: brightness_mode
+                        option: "Screensaver"             
+                    - lvgl.label.update:
+                        id: dim_label
+                        text: "#CCCCCC \U000F0335"  # lightbulb
+              - lvgl.resume
+              - lvgl.widget.redraw
+              - script.execute: apply_brightness_mode
