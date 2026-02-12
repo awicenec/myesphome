@@ -84,6 +84,8 @@ font:
       "\U000F040A",  # play icon
       "\U000F1A4C",  # lightbulb_night
       "\U000F0335",  # lightbulb
+      "\U000F0581",  # volume_off
+      "\U000F0580",  # volume_medium
       ]
 
 script:
@@ -95,8 +97,8 @@ script:
       - lvgl.label.update:
           id: volume_label
           text: !lambda |-
-            char speaker_on[] = "#00DD00 \U000F04C3";
-            char speaker_off[] = "#DD0000 \U000F04C4";
+            char speaker_on[] = "#00DD00 \U000F0580";
+            char speaker_off[] = "#DD0000 \U000F0581";
             if (id(tv_state).state == "off") {
               return speaker_off;
             } else if (!id(tv_is_muted).state) {
@@ -108,7 +110,7 @@ script:
           id: tv_label
           text: !lambda |-
             char tv_on[] = "#00DD00 \U000F0502";
-            char tv_off[] = "#DD0000 \U000F083B";
+            char tv_off[] = "#FFA500 \U000F083B";
             if (id(tv_state).state == "off") {
               return tv_off;
             } else {
@@ -139,10 +141,49 @@ script:
             snprintf(strftime_buf, sizeof(strftime_buf), "%s %d", time.strftime("%B").c_str(), day);
             return {strftime_buf};
 
+  - id: tv_mute
+    then:
+      if:
+        condition:
+          - binary_sensor.is_on: tv_is_muted
+        then:
+          - homeassistant.service:
+              service: media_player.volume_mute
+              data:
+                entity_id: media_player.lg_c4
+                is_volume_muted: "false"
+          - lvgl.label.update:
+              id: volume_label
+              text: "#00DD00 \U000F0580" # volume
+        else:
+          - homeassistant.service:
+              service: media_player.volume_mute
+              data:
+                entity_id: media_player.lg_c4
+                is_volume_muted: "true"
+          - lvgl.label.update:
+              id: volume_label
+              text: "#DD0000 \U000F0581" # volume off
 
 binary_sensor:
   - platform: status
     name: Status sensor
+  - platform: homeassistant
+    id: amp_state
+    entity_id: switch.smartplug1
+    name: "Amp state"
+    on_state:
+      if:
+        condition:
+          - binary_sensor.is_on: amp_state
+        then:
+          - lvgl.label.update:
+              id: amp_label
+              text: "#00DD00 \U000F04C3" # speaker
+        else:
+          - lvgl.label.update:
+              id: amp_label
+              text: "#FFA500 \U000F04C4" # speaker_off
   - platform: homeassistant
     id: tv_is_off
     entity_id: media_player.lg_c4
@@ -170,11 +211,11 @@ binary_sensor:
         then:
           - lvgl.label.update:
               id: volume_label
-              text: "#DD0000 \U000F04C4" # speaker off
+              text: "#DD0000 \U000F0581" # volume off
         else:
           - lvgl.label.update:
               id: volume_label
-              text: "#00DD00 \U000F04C3" # speaker
+              text: "#00DD00 \U000F0580" # volume_mid
 
 text_sensor:
   - platform: homeassistant
@@ -184,8 +225,6 @@ text_sensor:
     on_value:
       - if:
           condition: 
-            # !lambda |-
-            #   return 'id(tv_state).state == "playing";'
             or:
               - text_sensor.state:
                   id: "tv_state"
@@ -196,13 +235,16 @@ text_sensor:
               - text_sensor.state:
                   id: "tv_state"
                   state: "idle"
+              - text_sensor.state:
+                  id: "tv_state"
+                  state: "paused"
           then:
             - lvgl.label.update:
                 id: tv_label
                 text: "#00DD00 \U000F0502" # tv_on icon
             - lvgl.label.update:
                 id: pause_label
-                text: "#DDDD00 \U000F03E4" # pause icon
+                # text: "#DDDD00 \U000F03E4" # pause icon
                 state:
                   disabled: false
             - lvgl.arc.update:
@@ -211,27 +253,36 @@ text_sensor:
                   disabled: false
             - lvgl.label.update:
                 id: volume_label
+                text: "#00DD00 \U000F0580" # volume_mid
                 state:
                   disabled: false
+            # - homeassistant.service:
+            #     service: switch.turn_on
+            #     data:
+            #       entity_id: switch.smartplug1
           else:
             - lvgl.label.update:
                 id: tv_label
-                text: "#DD0000 \U000F083B" # tv_off icon
+                text: "#FFA500 \U000F083B" # tv_off icon
             - lvgl.label.update:
                 id: pause_label
-                text: "#DD0000 \U000F03E4" # pause icon
+                text: "#990000 \U000F03E4" # pause icon
                 state:
                   disabled: true
             - lvgl.arc.update:
                 id: volume_arc
-                arc_color: 0xDDDD00 # yellow
+                arc_color: 0x990000 # yellow
                 state:
                   disabled: true
             - lvgl.label.update:
                 id: volume_label
-                text: "#DD0000 \U000F04C4" # speaker off
+                text: "#990000 \U000F0581" # volume off
                 state:
                   disabled: true
+            # - homeassistant.service:
+            #     service: switch.turn_off
+            #     data:
+            #       entity_id: switch.smartplug1
   - platform: homeassistant
     id: tv_volume_level
     entity_id: media_player.lg_c4
@@ -250,6 +301,11 @@ text:
   - platform: lvgl
     name: fr_tv_label
     widget: tv_label
+    mode: text
+
+  - platform: lvgl
+    name: fr_amp_label
+    widget: amp_label
     mode: text
 
   - platform: lvgl
@@ -352,45 +408,12 @@ lvgl:
             on_change:
               - lvgl.label.update:
                   id: volume_label
-                  text: "#00DD00 \U000F04C3" # speaker
+                  text: "#00DD00 \U000F0580" # volume
               - homeassistant.service:
                   service: media_player.volume_set
                   data:
                     entity_id: media_player.lg_c4
                     volume_level: !lambda 'return x/100;'
-        - label:
-            id: volume_label
-            text_font: icons_72
-            hidden: false
-            recolor: true
-            text_align: center
-            x: 140
-            y: 240
-            width: 80
-            height: 80
-            text: "#DD0000 \U000F04C4" # speaker off
-            on_click:
-              if:
-                condition:
-                  - binary_sensor.is_on: tv_is_muted
-                then:
-                  - homeassistant.service:
-                      service: media_player.volume_mute
-                      data:
-                        entity_id: media_player.lg_c4
-                        is_volume_muted: "false"
-                  - lvgl.label.update:
-                      id: volume_label
-                      text: "#00DD00 \U000F04C3" # speaker
-                else:
-                  - homeassistant.service:
-                      service: media_player.volume_mute
-                      data:
-                        entity_id: media_player.lg_c4
-                        is_volume_muted: "true"
-                  - lvgl.label.update:
-                      id: volume_label
-                      text: "#DD0000 \U000F04C4" # speaker off
         - label:
             id: pause_label
             text_font: icons_72
@@ -409,16 +432,15 @@ lvgl:
                     entity_id: media_player.lg_c4
               - if:
                   condition:
-                    or:
-                      lambda: 'return id(tv_state).state != "playing";'
+                    lambda: 'return id(tv_state).state == "playing";'
                   then:
                     - lvgl.label.update:
                         id: pause_label
-                        text: "#DDDD00 \U000F03E4" # pause icon
+                        text: "#DDDD00 \U000F040A" # play icon
                   else:
                     - lvgl.label.update:
                         id: pause_label
-                        text: "#DDDD00 \U000F040A" # play icon
+                        text: "#DDDD00 \U000F03E4" # pause icon
         - label:
             id: tv_label
             text_font: icons_72
@@ -486,3 +508,37 @@ lvgl:
               - lvgl.resume
               - lvgl.widget.redraw
               - script.execute: apply_brightness_mode
+
+        - label:
+            id: volume_label
+            text_font: icons_72
+            hidden: false
+            recolor: true
+            text_align: center
+            x: 140
+            y: 240
+            width: 80
+            height: 80
+            text: "#00DD00 \U000F0580" # volume off
+            on_click:
+              script.execute: tv_mute
+
+        - label:
+            id: amp_label
+            text_font: icons_72
+            text: "#FFA500 \U000F04C4" # speaker_off
+            hidden: false
+            recolor: true
+            # align: RIGHT_MID
+            text_color: 0xFFA500
+            text_align: center
+            x: 250
+            y: 140
+            width: 80
+            height: 80
+            on_click:
+              - homeassistant.service:
+                  service: switch.toggle
+                  data:
+                    entity_id: switch.smartplug1
+              - script.execute: tv_mute
